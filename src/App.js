@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./App.css";
 
 // Component Imports
@@ -18,6 +18,7 @@ function App() {
   const [recommendations, setRecommendations] = useState({ text: "", tools: [] });
   const [selectedTools, setSelectedTools] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("Analyzing your problem...");
 
   // Step Navigation
   const nextStep = () => setStep((prev) => prev + 1);
@@ -27,9 +28,9 @@ function App() {
   // Backend URL (Dynamic)
   // -----------------------------
   const API_BASE_URL =
-  process.env.NODE_ENV === "production"
-    ? "https://smarterstarts1-backend.onrender.com"
-    : "https://smarterstarts1-backend.onrender.com"; // force HTTPS even in dev
+    process.env.NODE_ENV === "production"
+      ? "https://smarterstarts1-backend.onrender.com"
+      : "https://smarterstarts1-backend.onrender.com"; // force HTTPS even in dev
 
   // -----------------------------
   // Backend: Generate Recommendations
@@ -80,6 +81,55 @@ function App() {
       setLoading(false);
     }
   };
+
+  // ---------------------------------------------
+  // 🌀 Dynamic Loading Screen Messages
+  // ---------------------------------------------
+  useEffect(() => {
+    if (loading) {
+      const messages = [
+        "🧠 Analyzing your problem...",
+        "🔍 Matching the best SaaS tools for your business...",
+        "✨ Finalizing personalized recommendations..."
+      ];
+      let i = 0;
+      const interval = setInterval(() => {
+        i = (i + 1) % messages.length;
+        setLoadingMessage(messages[i]);
+      }, 2500);
+      return () => clearInterval(interval);
+    }
+  }, [loading]);
+
+  // ---------------------------------------------
+  // 🌀 Loading Screen While Gemini Generates
+  // ---------------------------------------------
+  if (loading) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100vh",
+          textAlign: "center",
+          fontFamily: "Inter, sans-serif",
+          color: "#002D72",
+          background: "linear-gradient(135deg, #f0f4ff 0%, #ffffff 100%)",
+          padding: "20px",
+        }}
+      >
+        <div className="spinner" />
+        <h2 style={{ marginTop: "25px", fontWeight: "600", fontSize: "20px" }}>
+          {loadingMessage}
+        </h2>
+        <p style={{ color: "#555", marginTop: "10px" }}>
+          Please hold on — this usually takes just a few seconds 💡
+        </p>
+      </div>
+    );
+  }
 
   // -----------------------------
   // UI Rendering by Step
