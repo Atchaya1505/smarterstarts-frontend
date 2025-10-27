@@ -9,10 +9,10 @@ function FeedbackStep({ selectedTools, nextStep, prevStep }) {
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 🌐 Dynamic backend URL (works both locally and in production)
+  // 🌐 Dynamic backend URL (works in dev + production)
   const API_BASE =
     process.env.NODE_ENV === "production"
-      ? "https://smarterstarts1-backend.onrender.com" // your Render backend
+      ? "https://smarterstarts1-backend.onrender.com"
       : "https://smarterstarts1-backend.onrender.com";
 
   // 🧩 Handle feedback form submission
@@ -29,7 +29,7 @@ function FeedbackStep({ selectedTools, nextStep, prevStep }) {
     setIsSubmitting(true);
 
     try {
-      // 🧠 Retrieve previously saved user/session data
+      // 🧠 Retrieve stored user/session data
       const userData = JSON.parse(localStorage.getItem("smarterstartsUser")) || {};
       const problem = localStorage.getItem("smarterstartsProblem") || "";
       const recommendations = localStorage.getItem("smarterstartsRecommendations") || "";
@@ -38,7 +38,7 @@ function FeedbackStep({ selectedTools, nextStep, prevStep }) {
         selectedTools ||
         [];
 
-      // 🧩 Build payload to send to backend
+      // 🧩 Build payload
       const payload = {
         user: {
           name: userData.name || "",
@@ -57,25 +57,29 @@ function FeedbackStep({ selectedTools, nextStep, prevStep }) {
 
       console.log("📤 Sending feedback payload:", payload);
 
-      // 🚀 Send POST request to Flask backend
+      // 🚀 Send POST to backend
       const response = await fetch(`${API_BASE}/submit_feedback`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      // Parse JSON result
       const result = await response.json();
       console.log("🪄 Backend response:", result);
 
       if (result.status === "success") {
-        alert("✅ Feedback submitted successfully!");
-        // 🧹 Clear stored data
-        localStorage.removeItem("smarterstartsUser");
-        localStorage.removeItem("smarterstartsProblem");
-        localStorage.removeItem("smarterstartsRecommendations");
-        localStorage.removeItem("smarterstartsSelectedTools");
-        nextStep();
+        console.log("✅ Feedback submitted successfully!");
+
+        // Add a short delay for smooth UX
+        setTimeout(() => {
+          alert("✅ Feedback submitted successfully!");
+          // 🧹 Clear all local storage items
+          localStorage.removeItem("smarterstartsUser");
+          localStorage.removeItem("smarterstartsProblem");
+          localStorage.removeItem("smarterstartsRecommendations");
+          localStorage.removeItem("smarterstartsSelectedTools");
+          nextStep();
+        }, 1000);
       } else {
         alert("⚠️ Backend error: " + result.message);
       }
@@ -158,6 +162,14 @@ function FeedbackStep({ selectedTools, nextStep, prevStep }) {
             {loading ? "Submitting..." : "Submit Feedback →"}
           </button>
         </div>
+
+        {/* 🚀 Quick visual confirmation with message */}
+        {isSubmitting && (
+          <div className="feedback-saving">
+            <div className="spinner"></div>
+            <p>🚀 Updating your feedback... and a special offer is waiting for you!</p>
+          </div>
+        )}
       </form>
     </div>
   );
