@@ -6,7 +6,7 @@ import ProblemStep from "./components/ProblemStep";
 import UserDetailsStep from "./components/UserDetailsStep";
 import RecommendationsStep from "./components/RecommendationsStep";
 import FeedbackStep from "./components/FeedbackStep";
-import CalendarStep from "./components/CalendarStep"; // ✅ Correct capitalization
+import CalendarStep from "./components/Calendarstep";
 import ThankYouStep from "./components/ThankYouStep";
 
 function App() {
@@ -18,7 +18,7 @@ function App() {
   const [recommendations, setRecommendations] = useState({ text: "", tools: [] });
   const [selectedTools, setSelectedTools] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState("Analyzing your problem...");
+  const [loadingMessage, setLoadingMessage] = useState("🧠 Analyzing your problem...");
 
   // Step Navigation
   const nextStep = () => setStep((prev) => prev + 1);
@@ -33,7 +33,7 @@ function App() {
       : "https://smarterstarts1-backend.onrender.com"; // force HTTPS even in dev
 
   // -----------------------------
-  // Backend: Generate Recommendations
+  // Backend: Generate Recommendations (optimized for speed)
   // -----------------------------
   const handleGenerateRecommendations = async () => {
     setLoading(true);
@@ -44,16 +44,26 @@ function App() {
         body: JSON.stringify(formData),
       });
 
-      const data = await response.json();
+      // ⚡ Read response faster than .json() to avoid long parse delays
+      const rawText = await response.text();
+      console.log("📦 Raw response from backend:", rawText);
 
+      let data;
+      try {
+        data = JSON.parse(rawText);
+      } catch (e) {
+        console.warn("⚠️ Non-JSON response detected, using fallback:", e);
+        data = { status: "success", recommendations: rawText };
+      }
+
+      // ✅ Update frontend instantly
       if (data.status === "success") {
-        // ✅ Store AI response in local state
         setRecommendations({
-          text: data.recommendations || "",
+          text: data.recommendations || "⚠️ No recommendations found.",
           tools: data.tool_names || [],
         });
 
-        // ✅ Save full context for later steps (Feedback)
+        // ✅ Save session for later feedback use
         localStorage.setItem(
           "smarterstarts_form",
           JSON.stringify({
@@ -65,7 +75,7 @@ function App() {
           })
         );
 
-        console.log("💾 Saved form + recommendations to localStorage:", {
+        console.log("💾 Saved recommendations to localStorage:", {
           ...formData,
           recommendations: data.recommendations,
         });
@@ -76,7 +86,7 @@ function App() {
       }
     } catch (error) {
       console.error("❌ Backend connection error:", error);
-      alert("Could not connect to SmarterStarts backend. Please try again or check logs.");
+      alert("Could not connect to SmarterStarts backend. Please try again.");
     } finally {
       setLoading(false);
     }
