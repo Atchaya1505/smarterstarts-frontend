@@ -7,19 +7,60 @@ function RecommendationsStep({
   setSelectedTools,
   nextStep,
   prevStep,
-  formData, // ✅ added so we can save user details
+  formData,
 }) {
   const [toolBlocks, setToolBlocks] = useState([]);
   const [toolNames, setToolNames] = useState([]);
+  const [liveRecommendations, setLiveRecommendations] = useState(recommendations);
 
   // ------------------------------------------
-  // 🧠 Extract tool names and split Gemini output
+  // 🧠 Firestore Live Poll (check every 10s for new data)
   // ------------------------------------------
   useEffect(() => {
-    if (!recommendations || recommendations.trim().length === 0) return;
+    const savedUser = JSON.parse(localStorage.getItem("smarterstartsUser") || "{}");
+    const userEmail = savedUser?.email;
+
+    if (!userEmail) return;
+
+    const fetchUpdates = async () => {
+      try {
+        const response = await fetch(
+          `https://firestore.googleapis.com/v1/projects/smarterstarts1/databases/(default)/documents/smarterstarts_sessions`
+        );
+        const json = await response.json();
+
+        const sessions = json.documents || [];
+        const userSession = sessions.find((doc) =>
+          doc.fields?.user?.mapValue?.fields?.email?.stringValue === userEmail
+        );
+
+        if (userSession) {
+          const rec =
+            userSession.fields?.recommendations?.stringValue || "⚙️ Still generating...";
+          if (rec && rec !== liveRecommendations) {
+            console.log("🔄 Updated recommendations found in Firestore!");
+            setLiveRecommendations(rec);
+          }
+        }
+      } catch (err) {
+        console.error("⚠️ Error checking Firestore:", err);
+      }
+    };
+
+    // Poll Firestore every 10 seconds
+    const interval = setInterval(fetchUpdates, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // ------------------------------------------
+  // 🧠 Split Gemini Output into Tool Blocks
+  // ------------------------------------------
+  useEffect(() => {
+    const textToUse = liveRecommendations || recommendations;
+    if (!textToUse || textToUse.trim().length === 0) return;
 
     const toolRegex = /(?:^|\n)(?:\*{0,3}|#{0,3})\s*\d+\.\s*([A-Za-z0-9][^\n]*)/g;
-    const blocks = recommendations
+    const blocks = textToUse
       .split(/\n(?=\d+\.\s|###\s*\d+\.)/g)
       .filter((b) => b.trim().length > 0)
       .slice(0, 5);
@@ -28,7 +69,7 @@ function RecommendationsStep({
 
     const names = [];
     let match;
-    while ((match = toolRegex.exec(recommendations)) !== null) {
+    while ((match = toolRegex.exec(textToUse)) !== null) {
       const name = match[1]
         .replace(/\*\*/g, "")
         .replace(/[-:]/g, "")
@@ -37,7 +78,6 @@ function RecommendationsStep({
       if (name && !names.includes(name)) names.push(name);
     }
 
-    // fallback if regex fails
     if (names.length === 0 && blocks.length > 0) {
       blocks.forEach((b) => {
         const firstLine = b.split("\n")[0];
@@ -46,10 +86,10 @@ function RecommendationsStep({
     }
 
     setToolNames(names.slice(0, 5));
-  }, [recommendations]);
+  }, [liveRecommendations, recommendations]);
 
   // ------------------------------------------
-  // ✅ Handle tool selection
+  // ✅ Tool Selection
   // ------------------------------------------
   const toggleTool = (tool) => {
     if (selectedTools.includes(tool)) {
@@ -60,7 +100,7 @@ function RecommendationsStep({
   };
 
   // ------------------------------------------
-  // ✅ Save all form data to localStorage before moving to Feedback step
+  // ✅ Save all selections before next step
   // ------------------------------------------
   const handleNext = () => {
     if (selectedTools.length === 0) {
@@ -71,8 +111,14 @@ function RecommendationsStep({
     try {
       localStorage.setItem("smarterstartsUser", JSON.stringify(formData || {}));
       localStorage.setItem("smarterstartsProblem", formData?.problem || "");
-      localStorage.setItem("smarterstartsRecommendations", recommendations || "");
-      localStorage.setItem("smarterstartsSelectedTools", JSON.stringify(selectedTools || []));
+      localStorage.setItem(
+        "smarterstartsRecommendations",
+        liveRecommendations || ""
+      );
+      localStorage.setItem(
+        "smarterstartsSelectedTools",
+        JSON.stringify(selectedTools || [])
+      );
       console.log("💾 Saved data to localStorage successfully!");
     } catch (err) {
       console.error("⚠️ Error saving to localStorage:", err);
@@ -82,18 +128,33 @@ function RecommendationsStep({
   };
 
   // ------------------------------------------
-  // 🚧 If still loading
+  // 🚧 Loading placeholder if empty
   // ------------------------------------------
-  if (!recommendations || recommendations.trim().length === 0) {
+  if (
+    !liveRecommendations ||
+    liveRecommendations.includes("Generating") ||
+    liveRecommendations.includes("Processing")
+  ) {
     return (
-      <div style={{ textAlign: "center", padding: "40px" }}>
-        <p>Generating recommendations... Please wait.</p>
+      <div
+        style={{
+          textAlign: "center",
+          padding: "80px 20px",
+          fontFamily: "Inter, sans-serif",
+        }}
+      >
+        <div className="spinner" style={{ margin: "0 auto 20px" }} />
+        <h3>✨ Generating your personalized SaaS recommendations...</h3>
+        <p style={{ color: "#555", marginTop: "10px" }}>
+          This will only take a few moments — we’re analyzing your inputs to find the
+          best matches 💡
+        </p>
       </div>
     );
   }
 
   // ------------------------------------------
-  // 🎨 UI Layout
+  // 🎨 Main UI Layout
   // ------------------------------------------
   return (
     <div
@@ -106,8 +167,7 @@ function RecommendationsStep({
     >
       <h2>✨ <b>Step 3 — Your Personalized Recommendations</b></h2>
       <p style={{ color: "#555" }}>
-        Based on your problem, company size, and budget — here are your top SaaS
-        matches:
+        Based on your problem, company size, and budget — here are your top SaaS matches:
       </p>
 
       <div
@@ -121,8 +181,8 @@ function RecommendationsStep({
           border: "1px solid #c8d9ff",
         }}
       >
-        I’ve analyzed your requirements and shortlisted the top 5 SaaS tools for
-        your needs — balancing usability, scalability, and affordability.
+        I’ve analyzed your requirements and shortlisted the top 5 SaaS tools for your
+        needs — balancing usability, scalability, and affordability.
       </div>
 
       <h4

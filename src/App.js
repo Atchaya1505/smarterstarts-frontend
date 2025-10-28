@@ -15,74 +15,61 @@ function App() {
   // -----------------------------
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({});
-  const [recommendations, setRecommendations] = useState({ text: "", tools: [] });
+  const [recommendations, setRecommendations] = useState({
+    text: "",
+    tools: [],
+  });
   const [selectedTools, setSelectedTools] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState("🧠 Analyzing your problem...");
+  const [loadingMessage, setLoadingMessage] = useState("🧠 Preparing your experience...");
 
-  // Step Navigation
   const nextStep = () => setStep((prev) => prev + 1);
   const prevStep = () => setStep((prev) => prev - 1);
 
   // -----------------------------
-  // Backend URL (Dynamic)
+  // Backend URL
   // -----------------------------
   const API_BASE_URL =
     process.env.NODE_ENV === "production"
       ? "https://smarterstarts1-backend.onrender.com"
-      : "https://smarterstarts1-backend.onrender.com"; // force HTTPS even in dev
+      : "https://smarterstarts1-backend.onrender.com";
 
   // -----------------------------
-  // Backend: Generate Recommendations (optimized for speed)
+  // ⚡ Optimized: Generate Recommendations Instantly
   // -----------------------------
   const handleGenerateRecommendations = async () => {
     setLoading(true);
+    setLoadingMessage("🧠 Sending your request...");
+
     try {
+      // Send request (don't wait for Gemini to finish)
       const response = await fetch(`${API_BASE_URL}/recommend`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
 
-      // ⚡ Read response faster than .json() to avoid long parse delays
-      const rawText = await response.text();
-      console.log("📦 Raw response from backend:", rawText);
+      const data = await response.json();
 
-      let data;
-      try {
-        data = JSON.parse(rawText);
-      } catch (e) {
-        console.warn("⚠️ Non-JSON response detected, using fallback:", e);
-        data = { status: "success", recommendations: rawText };
-      }
-
-      // ✅ Update frontend instantly
+      // ✅ Instantly move forward with placeholder text
       if (data.status === "success") {
         setRecommendations({
-          text: data.recommendations || "⚠️ No recommendations found.",
-          tools: data.tool_names || [],
+          text: "✨ Generating your personalized SaaS tool recommendations... This will appear shortly!",
+          tools: [],
         });
 
-        // ✅ Save session for later feedback use
         localStorage.setItem(
           "smarterstarts_form",
           JSON.stringify({
             ...formData,
-            recommendations: {
-              text: data.recommendations,
-              tools: data.tool_names,
-            },
+            recommendations: data.recommendations || "",
           })
         );
 
-        console.log("💾 Saved recommendations to localStorage:", {
-          ...formData,
-          recommendations: data.recommendations,
-        });
-
-        nextStep();
+        console.log("🚀 Request sent instantly to backend:", data);
+        nextStep(); // ✅ Immediate step change
       } else {
-        alert("⚠️ Failed to generate recommendations. Please try again.");
+        alert("⚠️ Failed to start recommendations. Please try again.");
       }
     } catch (error) {
       console.error("❌ Backend connection error:", error);
@@ -106,13 +93,13 @@ function App() {
       const interval = setInterval(() => {
         i = (i + 1) % messages.length;
         setLoadingMessage(messages[i]);
-      }, 2500);
+      }, 2000);
       return () => clearInterval(interval);
     }
   }, [loading]);
 
   // ---------------------------------------------
-  // 🌀 Loading Screen While Gemini Generates
+  // 🌀 Loading Screen
   // ---------------------------------------------
   if (loading) {
     return (
