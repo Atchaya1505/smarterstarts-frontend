@@ -6,7 +6,7 @@ import ProblemStep from "./components/ProblemStep";
 import UserDetailsStep from "./components/UserDetailsStep";
 import RecommendationsStep from "./components/RecommendationsStep";
 import FeedbackStep from "./components/FeedbackStep";
-import CalendarStep from "./components/Calendarstep";
+import CalendarStep from "./components/CalendarStep";
 import ThankYouStep from "./components/ThankYouStep";
 
 function App() {
@@ -189,7 +189,7 @@ function App() {
 
       {/* 📅 Step 5: Calendar Booking */}
       {step === 5 && (
-        <CalendarStep
+        <Calendarstep
           selectedTools={selectedTools}
           nextStep={nextStep}
           prevStep={prevStep}
