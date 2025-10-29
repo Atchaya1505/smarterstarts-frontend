@@ -189,7 +189,7 @@ function App() {
 
       {/* 📅 Step 5: Calendar Booking */}
       {step === 5 && (
-        <Calendarstep
+        <CalendarStep
           selectedTools={selectedTools}
           nextStep={nextStep}
           prevStep={prevStep}
